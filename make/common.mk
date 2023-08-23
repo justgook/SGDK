@@ -4,7 +4,6 @@ BIN_WIN:= $(GDK)/bin
 BIN_UNIX:= $(GDK)/bin-unix
 
 LIB := $(GDK)/lib
-
 SRC_LIB := $(GDK)/src
 RES_LIB := $(GDK)/res
 INCLUDE_LIB := $(GDK)/inc
@@ -17,10 +16,11 @@ ECHO := echo
 
 ifeq ($(OS),Windows_NT)
 	# Native Windows
-	RESCOMP_EXE := $(BIN_UNIX)/rescomp.jar
-	SIZEBND_EXE := $(BIN_UNIX)/sizebnd.jar
+	RESCOMP_EXE := $(BIN_WIN)/rescomp.jar
+	SIZEBND_EXE := $(BIN_WIN)/sizebnd.jar
 	SIZEBND := $(JAVA) -jar $(BIN_WIN)/sizebnd.jar
 	RESCOMP := $(JAVA) -jar $(BIN_WIN)/rescomp.jar
+	GCC_BIN := $(BIN_WIN)
 	SHELL := $(BIN_WIN)/sh.exe
 	RM := $(BIN_WIN)/rm.exe
 	CP := $(BIN_WIN)/cp.exe
@@ -42,12 +42,14 @@ else
 	SIZEBND_EXE := $(BIN_UNIX)/sizebnd.jar
 	SIZEBND := $(JAVA) -jar $(BIN_UNIX)/sizebnd.jar
 	RESCOMP := $(JAVA) -jar $(BIN_UNIX)/rescomp.jar
-	PREFIX := m68k-elf-
+	#GCC_BIN := $(BIN_UNIX)/m68k
+# GCC_BIN :=  ""
 	SHELL = sh
 	RM = rm
 	CP = cp
 	MKDIR = mkdir
 
+	PREFIX := m68k-elf-
 	AR := $(shell command -v $(PREFIX)ar 2> /dev/null)
 	ifndef AR
 		AR = $(BIN_UNIX)/m68k/bin/$(PREFIX)ar
@@ -83,14 +85,11 @@ $(BIN_UNIX)/m68k/bin/$(PREFIX)ar $(BIN_UNIX)/m68k/bin/$(PREFIX)gcc $(BIN_UNIX)/m
 	$(MAKE) -C $(BIN_UNIX)/toolchain-build -f $(abspath $(GDK))/make/toolchain.mk
 	$(MAKE) -C $(BIN_UNIX)/toolchain-build -f $(abspath $(GDK))/make/toolchain.mk install INSTALL_DIR=$(BIN_UNIX)/m68k
 
-SJASMEP_DIR := /tmp/sjasmep
-$(BIN_UNIX)/sjasm: $(SJASMEP_DIR)/Makefile
+SJASMEP_DIR := $(GDK)/tools/sjasmep
+$(BIN_UNIX)/sjasm:
 	$(MKDIR) -p $(dir $@)
 	cd $(SJASMEP_DIR) && $(MAKE)
 	$(CP) $(SJASMEP_DIR)/sjasm $@
-
-$(SJASMEP_DIR)/Makefile:
-	git clone https://github.com/istvan-v/sjasmep.git --depth=1  $(SJASMEP_DIR)
 
 $(BIN_UNIX)/bintos: $(GDK)/tools/bintos/src/*.c
 	$(MKDIR) -p $(dir $@)
@@ -100,6 +99,14 @@ $(BIN_UNIX)/xgmtool:
 	$(MKDIR) -p $(dir $@)
 	gcc -fexpensive-optimizations -Os -s $(GDK)/tools/xgmtool/src/*.c -o $@
 
+$(RESCOMP_EXE): $(BIN_UNIX)/xgmtool
+	echo "TODO: do compilation of $@ for real"
+	$(CP) $(BIN_WIN)/rescomp.jar $@
+
+$(SIZEBND_EXE):
+	echo "TODO: do compilation of $@ for real"
+	$(CP) $(BIN_WIN)/sizebnd.jar $@
+
 $(BIN_UNIX)/mac68k:
-	$( ECHO ) implement build for $@
+	$(ECHO) implement build for $@
 

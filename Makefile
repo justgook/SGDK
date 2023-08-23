@@ -57,7 +57,7 @@ LST:= $(SRC_C:.c=.lst)
 LSTS:= $(addprefix $(OUT)/, $(LST))
 
 INCS:= -I$(INCLUDE) -I$(SRC) -I$(RES) -I$(INCLUDE_LIB) -I$(RES_LIB)
-DEFAULT_FLAGS= $(EXTRA_FLAGS) -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions $(INCS) -B$(BIN)
+DEFAULT_FLAGS= $(EXTRA_FLAGS) -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions $(INCS) -B$(GCC_BIN)
 FLAGSZ80:= -i$(SRC) -i$(INCLUDE) -i$(RES) -i$(SRC_LIB) -i$(INCLUDE_LIB)
 
 #release: FLAGS= $(DEFAULT_FLAGS) -Os -fomit-frame-pointer -fuse-linker-plugin -flto
@@ -65,7 +65,7 @@ release: FLAGS= $(DEFAULT_FLAGS) -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno
 release: CFLAGS= $(FLAGS)
 release: AFLAGS= $(FLAGS)
 release: LIBMD= $(LIB)/libmd.a
-release: $(OUT)/rom.bin $(OUT)/symbol.txt
+release: $(LIB)/libmd.a $(OUT)/rom.bin $(OUT)/symbol.txt
 .PHONY: release
 
 #release: $(info $$var is [${SRC_C}])
@@ -155,16 +155,16 @@ cleanAsm: cleanasm
 .PHONY: cleanRelease cleanDebug cleanAsm
 
 
-$(OUT)/rom.bin: $(OBJCPY) $(OUT)/rom.out
+$(OUT)/rom.bin: $(OUT)/rom.out $(OBJCPY) $(SIZEBND_EXE)
 	$(OBJCPY) -O binary $(OUT)/rom.out $(OUT)/rom.bin
 	$(SIZEBND) $(OUT)/rom.bin -sizealign 131072 -checksum
 
-$(OUT)/symbol.txt: $(NM) $(OUT)/rom.out
-	$(NM) $(LTO_PLUGIN) -n $(OUT)/rom.out > $(OUT)/symbol.txt
+$(OUT)/symbol.txt: $(OUT)/rom.out $(NM)
+	$(NM) $(LTO_PLUGIN) -n $< > $@
 
 $(OUT)/rom.out: $(OUT)/sega.o $(OUT)/cmd_ $(LIBMD) $(CC)
 	$(MKDIR) -p $(dir $@)
-	$(CC) -B$(BIN) -n -T $(GDK)/md.ld -nostdlib $(OUT)/sega.o @$(OUT)/cmd_ $(LIBMD) $(LIBGCC) -o $(OUT)/rom.out -Wl,--gc-sections
+	$(CC) -B$(GCC_BIN) -n -T $(GDK)/md.ld -nostdlib $(OUT)/sega.o @$(OUT)/cmd_ $(LIBMD) $(LIBGCC) -o $(OUT)/rom.out -Wl,--gc-sections
 	$(RM) $(OUT)/cmd_
 
 $(OUT)/cmd_: $(OBJS)
@@ -202,13 +202,13 @@ $(OUT)/%.o: %.s
 	$(MKDIR) -p $(dir $@)
 	$(CC) -x assembler-with-cpp -Wa,--register-prefix-optional,--bitwise-or $(AFLAGS) -MMD -c $< -o $@
 
-$(OUT)/%.o: %.rs
+$(OUT)/%.o: %.rs $(CC)
 	$(MKDIR) -p $(dir $@)
 	$(CC) -x assembler-with-cpp -Wa,--register-prefix-optional,--bitwise-or $(AFLAGS) -c $*.rs -o $@
 	$(CP) $*.d $(OUT)/$*.d
 	$(RM) $*.d
 
-%.rs: %.res
+%.rs: %.res $(RESCOMP_EXE)
 	$(RESCOMP) $*.res $*.rs -dep $(OUT)/$*.o
 
 %.s: %.asm

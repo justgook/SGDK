@@ -17,7 +17,6 @@
 *.ini
 *.rs
 *.d
-**/.DS_Store
 **/.settings/**
 **/out/**
 !**/out/rom.bin
@@ -29,6 +28,7 @@ rom_head.bin
 res/libres.s
 !res/libres.h
 src/z80_*.s
+
 archive
 cb
 not needed
@@ -47,10 +47,22 @@ tools/xgm rom builder/bin
 src/z80_*.h
 #OS and IDE file
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
 /.idea
 *.iml
 
 #build target folders
 /lib/
 /bin-unix/
+#Preserv Windows binaries until they will be rebuild during initial state (same as on Unix system)
+!/bin/*.exe
+!/bin/*.dll
+!/bin/*.jar
+!/tools/xgmRomBuilder/xgmtool.exe
 

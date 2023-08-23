@@ -29,9 +29,6 @@ MPFR_PKG      = $(MPFR_DIR).tar.xz
 #BINUTILS_SHA  = 645c25f563b8adc0a81dbd6a41cffbf4d37083a382e02d5d3df4f65c09516d00
 #GCC_SHA       = e549cf9cf3594a00e27b6589d4322d70e0720cdd213f39beb4181e06926230ff
 
-BINUTILS_SHA  = 0f8a4c272d7f17f369ded10a4aca28b8e304828e95526da482b0ccc4dfc9d8e1
-GCC_SHA       = 61d684f0aa5e76ac6585ad8898a2427aade8979ed5e7f85492286c4dfc13ee86
-NEWLIB_SHA    = c3a0e8b63bc3bef1aeee4ca3906b53b3b86c8d139867607369cb2915ffc54435
 ISL_SHA       = fcf78dd9656c10eb8cf9fbd5f59a0b6b01386205fe1934b3b287a0a1898145c0
 GMP_SHA       = fd4829912cddd12f84181c3451cc752be224643e87fac497b69edddadc49b4f2
 MPC_SHA       = 17503d2c395dfcf106b622dc142683c1199431d095367c6aacba6eec30340459
@@ -54,7 +51,7 @@ PREFIX := $(shell pwd)/work
 PATH   := $(PREFIX)/bin:$(PATH)
 LOGDIR := $(shell pwd)
 SHASUM := shasum -a 256 -c
-LANGS  ?= c,c++
+LANGS  ?= c
 
 COMFLAGS := --target=m68k-elf --with-cpu=m68000 --prefix=$(PREFIX) --libdir=$(PREFIX)/lib --libexecdir=$(PREFIX)/libexec
 
@@ -123,29 +120,16 @@ mk-gcc2: $(GCC_DIR) mk-newlib
 	@touch mk-gcc2
 
 # Download packages from mirror
-
-$(BINUTILS_PKG):
-	@wget $(DL_MIRROR)$(BINUTILS_PKG)
-	@echo "$(BINUTILS_SHA) *$(BINUTILS_PKG)" | $(SHASUM)
-
-$(GCC_PKG):
-	@wget $(DL_MIRROR)$(GCC_PKG)
-	@echo "$(GCC_SHA) *$(GCC_PKG)" | $(SHASUM)
-
-$(NEWLIB_PKG):
-	@wget $(DL_MIRROR)$(NEWLIB_PKG)
-	@echo "$(NEWLIB_SHA) *$(NEWLIB_PKG)" | $(SHASUM)
-
 # Extract source packages with tar
 
-$(BINUTILS_DIR): $(BINUTILS_PKG)
-	tar xf $(BINUTILS_PKG)
+$(BINUTILS_DIR):
+	@wget $(DL_MIRROR)$(BINUTILS_PKG) -O - | tar -xJ
 
-$(GCC_DIR): $(GCC_PKG)
-	tar xf $(GCC_PKG)
+$(GCC_DIR):
+	@wget $(DL_MIRROR)$(GCC_PKG) -O - | tar -xJ
 
-$(NEWLIB_DIR): $(NEWLIB_PKG)
-	tar xf $(NEWLIB_PKG)
+$(NEWLIB_DIR):
+	@wget $(DL_MIRROR)$(NEWLIB_PKG) -O - | tar -xz
 
 # Handling of GCC prerequisites
 
