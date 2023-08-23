@@ -1,11 +1,8 @@
-MAKEFILE_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
-MAKEFILE_DIR := $(subst \,/,$(MAKEFILE_DIR))
+.DEFAULT_GOAL := release
+ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+GDK := $(abspath $(ROOT_DIR))
 
-ifneq ("$(wildcard $(MAKEFILE_DIR)bin/rescomp.jar)","")
-    GDK := $(patsubst %/,%,$(MAKEFILE_DIR))
-endif
-
-include $(GDK)/common.mk
+include $(GDK)/make/common.mk
 
 SRC := src
 RES := res
@@ -64,7 +61,7 @@ DEFAULT_FLAGS= $(EXTRA_FLAGS) -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negati
 FLAGSZ80:= -i$(SRC) -i$(INCLUDE) -i$(RES) -i$(SRC_LIB) -i$(INCLUDE_LIB)
 
 #release: FLAGS= $(DEFAULT_FLAGS) -Os -fomit-frame-pointer -fuse-linker-plugin -flto
-release: FLAGS= $(DEFAULT_FLAGS) -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto
+release: FLAGS= $(DEFAULT_FLAGS) -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -ffat-lto-objects
 release: CFLAGS= $(FLAGS)
 release: AFLAGS= $(FLAGS)
 release: LIBMD= $(LIB)/libmd.a
@@ -158,14 +155,14 @@ cleanAsm: cleanasm
 .PHONY: cleanRelease cleanDebug cleanAsm
 
 
-$(OUT)/rom.bin: $(OUT)/rom.out
+$(OUT)/rom.bin: $(OBJCPY) $(OUT)/rom.out
 	$(OBJCPY) -O binary $(OUT)/rom.out $(OUT)/rom.bin
 	$(SIZEBND) $(OUT)/rom.bin -sizealign 131072 -checksum
 
-$(OUT)/symbol.txt: $(OUT)/rom.out
+$(OUT)/symbol.txt: $(NM) $(OUT)/rom.out
 	$(NM) $(LTO_PLUGIN) -n $(OUT)/rom.out > $(OUT)/symbol.txt
 
-$(OUT)/rom.out: $(OUT)/sega.o $(OUT)/cmd_ $(LIBMD)
+$(OUT)/rom.out: $(OUT)/sega.o $(OUT)/cmd_ $(LIBMD) $(CC)
 	$(MKDIR) -p $(dir $@)
 	$(CC) -B$(BIN) -n -T $(GDK)/md.ld -nostdlib $(OUT)/sega.o @$(OUT)/cmd_ $(LIBMD) $(LIBGCC) -o $(OUT)/rom.out -Wl,--gc-sections
 	$(RM) $(OUT)/cmd_
@@ -222,3 +219,9 @@ $(OUT)/%.o: %.rs
 
 %.s: %.o80
 	$(BINTOS) $<
+
+$(LIB)/libmd.a:
+	make -C $(GDK) -f $(GDK)/make/makelib.mk $@
+$(LIB)/libmd_debug.a:
+	make -C $(GDK) -f $(GDK)/make/makelib.mk $@
+

@@ -1,3 +1,4 @@
+ARG DOCKER_TAG=unknown
 ARG ALPINE_VERSION=3.18.3
 ARG JDK_VER=11
 
@@ -57,7 +58,6 @@ RUN jar cfe $SGDK_PATH/bin/sizebnd.jar sgdk.sizebnd.Launcher sgdk/sizebnd/*.clas
 WORKDIR $SGDK_PATH/tools/rescomp/src
 ENV CLASSPATH="$SGDK_PATH/bin/apj.jar:$SGDK_PATH/bin/lz4w.jar:$SGDK_PATH/tools/rescomp/src"
 RUN cp -r $SGDK_PATH/tools/commons/src/sgdk .
-RUN find . -name "*.java"
 RUN find . -name "*.java" | xargs javac
 RUN echo -e "Main-Class: sgdk.rescomp.Launcher\nClass-Path: apj.jar lz4w.jar" > Manifest.txt
 RUN jar cfm $SGDK_PATH/bin/rescomp.jar Manifest.txt  .
@@ -114,3 +114,4 @@ WORKDIR /src
 # Use sgdk user
 USER sgdk
 ENTRYPOINT ["/bin/sh","-c","make -f $SGDK_PATH/makefile.gen $@", "--"]
+

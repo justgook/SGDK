@@ -45,5 +45,12 @@ tools/rescomp/format
 tools/rescomp/rescomp.jar
 tools/xgm rom builder/bin
 src/z80_*.h
+#OS and IDE file
+.DS_Store
 /.idea
 *.iml
+
+#build target folders
+/lib/
+/bin-unix/
+
