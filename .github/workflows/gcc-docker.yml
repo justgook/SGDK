@@ -4,7 +4,7 @@ concurrency:
   cancel-in-progress: true
 env:
   REGISTRY_IMAGE: ghcr.io/${{ github.actor }}/sgdk-m68k-gcc
-  DOCKERFILE: deps/gcc.Dockerfile 
+  DOCKERFILE: make/toolchain.Dockerfile
 
 on:
   workflow_dispatch:
@@ -80,7 +80,7 @@ jobs:
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
-  
+
   merge:
     if: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest

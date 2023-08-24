@@ -108,7 +108,7 @@ $(LIB)/%.a: %.cmd $(AR)
 %.o: %.rs $(CC)
 	$(CC) -x assembler-with-cpp -Wa,--register-prefix-optional,--bitwise-or $(AFLAGS_LIB) -c $*.rs -o $@
 
-%.rs: %.res
+%.rs: %.res $(RESCOMP_EXE)
 	$(RESCOMP) $*.res $*.rs -dep $*.o
 
 %.o80: %.s80 $(ASMZ80)

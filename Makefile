@@ -1,8 +1,18 @@
-.DEFAULT_GOAL := release
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 GDK := $(abspath $(ROOT_DIR))
 
 include $(GDK)/make/common.mk
+
+ifeq ("$(CURDIR)","$(GDK)")
+.DEFAULT_GOAL := $(LIB)/libmd.a
+delme:
+	echo "AAAA"
+else
+.DEFAULT_GOAL := release
+delme:
+	echo "BBBB"
+endif
+
 
 SRC := src
 RES := res
@@ -60,15 +70,13 @@ INCS:= -I$(INCLUDE) -I$(SRC) -I$(RES) -I$(INCLUDE_LIB) -I$(RES_LIB)
 DEFAULT_FLAGS= $(EXTRA_FLAGS) -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions $(INCS) -B$(GCC_BIN)
 FLAGSZ80:= -i$(SRC) -i$(INCLUDE) -i$(RES) -i$(SRC_LIB) -i$(INCLUDE_LIB)
 
-#release: FLAGS= $(DEFAULT_FLAGS) -Os -fomit-frame-pointer -fuse-linker-plugin -flto
 release: FLAGS= $(DEFAULT_FLAGS) -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -ffat-lto-objects
 release: CFLAGS= $(FLAGS)
 release: AFLAGS= $(FLAGS)
 release: LIBMD= $(LIB)/libmd.a
 release: $(LIB)/libmd.a $(OUT)/rom.bin $(OUT)/symbol.txt
-.PHONY: release
 
-#release: $(info $$var is [${SRC_C}])
+.PHONY: release
 
 debug: FLAGS= $(DEFAULT_FLAGS) -O1 -DDEBUG=1
 debug: CFLAGS= $(FLAGS) -ggdb

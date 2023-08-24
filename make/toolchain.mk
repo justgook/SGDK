@@ -1,38 +1,20 @@
+ifeq ($(shell which makeinfo),)
+  $(error "'makeinfo' not found. Make sure the 'texinfo' package is installed.")
+endif
+ifeq ($(shell which wget),)
+  $(error "'wget' not found. Make sure the 'wget' package is installed.")
+endif
+
 INSTALL_DIR  ?= /opt/toolchains/m68k-elf
-DL_MIRROR    ?= https://tenshi.skychase.zone/
+DL_MIRROR    ?= http://ftpmirror.gnu.org
 
 BINUTILS_VER ?= 2.40
 GCC_VER      ?= 13.1.0
 NEWLIB_VER   ?= 4.2.0.20211231
-ISL_VER      ?= 0.24
-GMP_VER      ?= 6.2.1
-MPC_VER      ?= 1.2.1
-MPFR_VER     ?= 4.1.0
 
 BINUTILS_DIR  = binutils-$(BINUTILS_VER)
 GCC_DIR       = gcc-$(GCC_VER)
 NEWLIB_DIR    = newlib-$(NEWLIB_VER)
-ISL_DIR       = isl-$(ISL_VER)
-GMP_DIR       = gmp-$(GMP_VER)
-MPC_DIR       = mpc-$(MPC_VER)
-MPFR_DIR      = mpfr-$(MPFR_VER)
-
-BINUTILS_PKG  = $(BINUTILS_DIR).tar.xz
-GCC_PKG       = $(GCC_DIR).tar.xz
-NEWLIB_PKG    = $(NEWLIB_DIR).tar.gz
-ISL_PKG       = $(ISL_DIR).tar.bz2
-GMP_PKG       = $(GMP_DIR).tar.xz
-MPC_PKG       = $(MPC_DIR).tar.gz
-MPFR_PKG      = $(MPFR_DIR).tar.xz
-
-# For Binutils 1.39 and GCC 12.2.0
-#BINUTILS_SHA  = 645c25f563b8adc0a81dbd6a41cffbf4d37083a382e02d5d3df4f65c09516d00
-#GCC_SHA       = e549cf9cf3594a00e27b6589d4322d70e0720cdd213f39beb4181e06926230ff
-
-ISL_SHA       = fcf78dd9656c10eb8cf9fbd5f59a0b6b01386205fe1934b3b287a0a1898145c0
-GMP_SHA       = fd4829912cddd12f84181c3451cc752be224643e87fac497b69edddadc49b4f2
-MPC_SHA       = 17503d2c395dfcf106b622dc142683c1199431d095367c6aacba6eec30340459
-MPFR_SHA      = 0c98a3f1732ff6ca4ea690552079da9c597872d30e96ec28414ee23c95558a7f
 
 GCC_PREREQ  = $(GCC_DIR)/isl
 GCC_PREREQ += $(GCC_DIR)/gmp
@@ -74,9 +56,9 @@ mk-binutils: $(BINUTILS_DIR)
 	@echo "+++ Building $(BINUTILS_DIR)..."
 	@mkdir -p $(BUILD_DIR)
 	cd $(BUILD_DIR) && ../configure $(COMFLAGS) --enable-install-libbfd \
-		--enable-shared=no --disable-werror > $(LOGDIR)/binutils.log 2>&1
-	$(MAKE) -C $(BUILD_DIR) all -j$(NPROC) >> $(LOGDIR)/binutils.log 2>&1
-	$(MAKE) -C $(BUILD_DIR) install-strip >> $(LOGDIR)/binutils.log 2>&1
+		--enable-shared=no --disable-werror
+	$(MAKE) -C $(BUILD_DIR) all -j$(NPROC)
+	$(MAKE) -C $(BUILD_DIR) install-strip
 	@rm -rf $(BUILD_DIR)
 	@touch mk-binutils
 
@@ -88,9 +70,9 @@ mk-gcc: $(GCC_DIR) $(GCC_PREREQ) mk-binutils
 	cd $(BUILD_DIR) && ../configure $(COMFLAGS) \
 		--enable-languages=$(LANGS1P) --without-headers --disable-libssp \
 		--disable-threads --disable-tls --disable-multilib --enable-shared=no \
-		--disable-werror >> $(LOGDIR)/gcc.log 2>&1
-	$(MAKE) -C $(BUILD_DIR) all -j$(NPROC) >> $(LOGDIR)/gcc.log 2>&1
-	$(MAKE) -C $(BUILD_DIR) install-strip >> $(LOGDIR)/gcc.log 2>&1
+		--disable-werror
+	$(MAKE) -C $(BUILD_DIR) all -j$(NPROC)
+	$(MAKE) -C $(BUILD_DIR) install-strip
 	@rm -rf $(BUILD_DIR)
 	@touch mk-gcc
 
@@ -119,48 +101,20 @@ mk-gcc2: $(GCC_DIR) mk-newlib
 	@rm -rf $(BUILD_DIR)
 	@touch mk-gcc2
 
-# Download packages from mirror
-# Extract source packages with tar
+# Download packages from mirror and extract source packages with tar
 
 $(BINUTILS_DIR):
-	@wget $(DL_MIRROR)$(BINUTILS_PKG) -O - | tar -xJ
+	@wget $(DL_MIRROR)/gnu/binutils/$(BINUTILS_DIR).tar.xz -O - | tar -xJ
 
 $(GCC_DIR):
-	@wget $(DL_MIRROR)$(GCC_PKG) -O - | tar -xJ
+	@wget $(DL_MIRROR)/gnu/gcc/$(GCC_DIR)/$(GCC_DIR).tar.xz -O - | tar -xJ
 
 $(NEWLIB_DIR):
-	@wget $(DL_MIRROR)$(NEWLIB_PKG) -O - | tar -xz
+	@wget ftp://sourceware.org/pub/newlib/$(NEWLIB_DIR).tar.gz -O - | tar -xz
 
 # Handling of GCC prerequisites
-
-$(GCC_DIR)/isl: $(ISL_PKG) $(GCC_DIR)
-	tar xf $< && mv $(ISL_DIR) $@
-
-$(GCC_DIR)/gmp: $(GMP_PKG) $(GCC_DIR)
-	tar xf $< && mv $(GMP_DIR) $@
-
-$(GCC_DIR)/mpc: $(MPC_PKG) $(GCC_DIR)
-	tar xf $< && mv $(MPC_DIR) $@
-
-$(GCC_DIR)/mpfr: $(MPFR_PKG) $(GCC_DIR)
-	tar xf $< && mv $(MPFR_DIR) $@
-
-$(ISL_PKG):
-	@wget $(DL_MIRROR)$(ISL_PKG)
-	@echo "$(ISL_SHA) *$(ISL_PKG)" | $(SHASUM)
-
-$(GMP_PKG):
-	@wget $(DL_MIRROR)$(GMP_PKG)
-	@echo "$(GMP_SHA) *$(GMP_PKG)" | $(SHASUM)
-
-$(MPC_PKG):
-	@wget $(DL_MIRROR)$(MPC_PKG)
-	@echo "$(MPC_SHA) *$(MPC_PKG)" | $(SHASUM)
-
-$(MPFR_PKG):
-	@wget $(DL_MIRROR)$(MPFR_PKG)
-	@echo "$(MPFR_SHA) *$(MPFR_PKG)" | $(SHASUM)
-
+$(GCC_PREREQ): $(GCC_DIR)
+	cd $(GCC_DIR) && ./contrib/download_prerequisites
 
 clean:
 	rm -rf work
