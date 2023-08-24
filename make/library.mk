@@ -3,6 +3,7 @@ ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 GDK := $(abspath $(ROOT_DIR)/..)
 include $(GDK)/make/common.mk
 
+
 SRC_LIB_C := $(wildcard $(SRC_LIB)/*.c)
 SRC_LIB_C += $(wildcard $(SRC_LIB)/ext/*.c)
 SRC_LIB_C += $(wildcard $(SRC_LIB)/ext/*/*.c)
@@ -30,12 +31,12 @@ INCS_LIB := -I$(INCLUDE_LIB) -I$(SRC_LIB) -I$(RES_LIB)
 DEFAULT_FLAGS_LIB := $(EXTRA_FLAGS) -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-unused-parameter -fno-builtin -fms-extensions $(INCS_LIB) -B$(GCC_BIN)
 FLAGSZ80_LIB := -i$(SRC_LIB) -i$(INCLUDE_LIB)
 
-release: $(lib)/libmd.a
+release: $(LIB)/libmd.a
 
 debug: FLAGS_LIB= $(DEFAULT_FLAGS_LIB) -O1 -DDEBUG=1
 debug: CFLAGS_LIB= $(FLAGS_LIB) -ggdb
 debug: AFLAGS_LIB= $(FLAGS_LIB)
-debug: $(lib)/libmd_debug.a
+debug: $(LIB)/libmd_debug.a
 
 asm: FLAGS_LIB= $(DEFAULT_FLAGS_LIB) -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -S
 asm: CFLAGS_LIB= $(FLAGS_LIB)
@@ -117,3 +118,4 @@ $(LIB)/%.a: %.cmd $(AR)
 %.s: %.o80 $(BINTOS)
 	$(BINTOS) $<
 
+include $(GDK)/make/tools.mk
