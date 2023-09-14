@@ -59,47 +59,25 @@ INCS:= -I$(INCLUDE) -I$(SRC) -I$(RES) -I$(INCLUDE_LIB) -I$(RES_LIB)
 DEFAULT_FLAGS= $(EXTRA_FLAGS) -DSGDK_GCC -m68000 -Wall -Wextra -Wno-shift-negative-value -Wno-main -Wno-unused-parameter -fno-builtin -fms-extensions $(INCS) -B$(GCC_BIN)
 FLAGSZ80:= -i$(SRC) -i$(INCLUDE) -i$(RES) -i$(SRC_LIB) -i$(INCLUDE_LIB)
 
-release: FLAGS= $(DEFAULT_FLAGS) -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -ffat-lto-objects
-release: CFLAGS= $(FLAGS)
-release: AFLAGS= $(FLAGS)
-release: LIBMD= $(LIB)/libmd.a
-release: $(LIB)/libmd.a $(OUT)/rom.bin $(OUT)/symbol.txt
 
+release: FLAGS=$(DEFAULT_FLAGS) -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -flto -ffat-lto-objects
+release: CFLAGS=$(FLAGS)
+release: AFLAGS=$(FLAGS)
+release: $(OUT)/rom.bin $(OUT)/rom_symbol.txt
 .PHONY: release
 
-debug: FLAGS= $(DEFAULT_FLAGS) -O1 -DDEBUG=1
-debug: CFLAGS= $(FLAGS) -ggdb
-debug: AFLAGS= $(FLAGS)
-debug: LIBMD= $(LIB)/libmd_debug.a
-debug: $(OUT)/rom.bin $(OUT)/rom.out $(OUT)/symbol.txt
+debug: FLAGS=$(DEFAULT_FLAGS) -O1 -DDEBUG=1
+debug: CFLAGS=$(FLAGS) -ggdb
+debug: AFLAGS=$(FLAGS)
+debug: $(OUT)/rom_debug.bin $(OUT)/rom_debug_symbol.txt
 .PHONY: debug
 
-asm: FLAGS= $(DEFAULT_FLAGS) -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -S
-asm: CFLAGS= $(FLAGS)
-asm: AFLAGS= $(FLAGS)
-asm: LIBMD= $(LIB)/libmd.a
+asm: FLAGS=$(DEFAULT_FLAGS) -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -S
+asm: CFLAGS=$(FLAGS)
+asm: AFLAGS=$(FLAGS)
 asm: $(LSTS)
 .PHONY: asm
 
-define MAIN_C_CONTENT
-#include "genesis.h"
-
-int main(bool hardReset){
-    VDP_drawText("Hello SGDK!", 12, 12);
-    while(TRUE) { SYS_doVBlankProcess(); }
-    return 0;
-}
-endef
-
-$(SRC)/main.c: export MAIN_C_CONTENT:=$(MAIN_C_CONTENT)
-$(SRC)/main.c:
-	$(MKDIR) -p $(dir $@)
-	$(ECHO) "$${MAIN_C_CONTENT}" > $@
-
-# include ext.mk if it exists (better to do it after release rule definition)
-ifneq ("$(wildcard $(GDK)/ext.mk)","")
-    include $(GDK)/ext.mk
-endif
 
 all: release
 default: release
@@ -110,27 +88,27 @@ Release: release
 Asm: asm
 
 cleantmp:
-	$(RM) -f $(RES_RS)
+	$(Q)$(RM) -f $(RES_RS)
 .PHONY: cleantmp
 
 cleandep:
-	$(RM) -f $(DEPS)
+	$(Q)$(RM) -f $(DEPS)
 .PHONY: cleandep
 
 cleanlst:
-	$(RM) -f $(LSTS)
+	$(Q)$(RM) -f $(LSTS)
 .PHONY: cleanlst
 
 cleanres: cleantmp
-	$(RM) -f $(RES_H) $(RES_DEP) $(RES_DEPS)
+	$(Q)$(RM) -f $(RES_H) $(RES_DEP) $(RES_DEPS)
 .PHONY: cleanres
 
 cleanobj:
-	$(RM) -f $(OBJS) $(OUT)/sega.o $(OUT)/rom_head.bin $(OUT)/rom_head.o $(OUT)/rom.out
+	$(Q)$(RM) -f $(OBJS) $(OUT)/sega.o $(OUT)/rom_head.bin $(OUT)/rom_head.o $(OUT)/rom.out
 .PHONY: cleanobj
 
 clean: cleanobj cleanres cleanlst cleandep
-	$(RM) -f out.lst $(OUT)/cmd_ $(OUT)/symbol.txt $(OUT)/rom.nm $(OUT)/rom.wch $(OUT)/rom.bin
+	$(Q)$(RM) -f out.lst  $(OUT)/symbol.txt $(OUT)/rom.nm $(OUT)/rom.wch $(OUT)/rom.bin
 .PHONY: clean
 
 cleanrelease: clean
@@ -151,75 +129,105 @@ cleanDebug: cleandebug
 cleanAsm: cleanasm
 .PHONY: cleanRelease cleanDebug cleanAsm
 
+$(OUT)/%.bin: $(OUT)/%.out $(OBJCPY) $(SIZEBND_EXE)
+	$(Q)$(ECHO) "+++ Creating $@ ..."
+	$(Q)$(OBJCPY) -O binary $< $@
+	$(Q)$(SIZEBND) $@ -sizealign 131072 -checksum
 
-$(OUT)/rom.bin: $(OUT)/rom.out $(OBJCPY) $(SIZEBND_EXE)
-	$(OBJCPY) -O binary $(OUT)/rom.out $(OUT)/rom.bin
-	$(SIZEBND) $(OUT)/rom.bin -sizealign 131072 -checksum
+$(OUT)/%_symbol.txt: $(OUT)/%.out $(NM)
+	$(Q)$(NM) $(LTO_PLUGIN) -n $< > $@
 
-$(OUT)/symbol.txt: $(OUT)/rom.out $(NM)
-	$(NM) $(LTO_PLUGIN) -n $< > $@
+$(OUT)/rom.out: $(LIB)/libmd.a
+$(OUT)/rom_debug.out: $(LIB)/libmd_debug.a
+$(OUT)/%.out: $(OUT)/%.cmd $(OUT)/sega.o $(CC)
+	$(Q)$(ECHO) "+++ Creating $@ ..."
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(CC) -B$(GCC_BIN) -n -T $(GDK)/md.ld -nostdlib $(OUT)/sega.o @$<  $(LIB)/$(subst rom,libmd,$*).a $(LIBGCC) -o $@ -Wl,--gc-sections
 
-$(OUT)/rom.out: $(OUT)/sega.o $(OUT)/cmd_ $(LIBMD) $(CC)
-	$(MKDIR) -p $(dir $@)
-	$(CC) -B$(GCC_BIN) -n -T $(GDK)/md.ld -nostdlib $(OUT)/sega.o @$(OUT)/cmd_ $(LIBMD) $(LIBGCC) -o $(OUT)/rom.out -Wl,--gc-sections
-	$(RM) $(OUT)/cmd_
-
-$(OUT)/cmd_: $(OBJS)
-	$(MKDIR) -p $(dir $@)
-	$(ECHO) "$(OBJS)" > $(OUT)/cmd_
+$(OUT)/%.cmd: $(OBJS)
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(ECHO) "$(OBJS)" > $@
 
 $(OUT)/sega.o: $(OUT)/boot/sega.s $(OUT)/rom_head.bin
-	$(CC) -x assembler-with-cpp -Wa,--register-prefix-optional,--bitwise-or $(AFLAGS) -c $(OUT)/boot/sega.s -o $@
+	$(Q)$(ECHO) "+++ Compiling $< ..."
+	$(Q)$(CC) -x assembler-with-cpp -Wa,--register-prefix-optional,--bitwise-or $(AFLAGS) -c $(OUT)/boot/sega.s -o $@
 
 $(OUT)/rom_head.bin: $(OUT)/rom_head.o
-	$(OBJCPY) -O binary $< $@
+	$(Q)$(ECHO) "+++ Compiling $< ..."
+	$(Q)$(OBJCPY) -O binary $< $@
 
 $(OUT)/rom_head.o: $(SRC)/boot/rom_head.c
-	$(MKDIR) -p $(dir $@)
-	$(CC) $(DEFAULT_FLAGS) -c $< -o $@
+	$(Q)$(ECHO) "+++ Compiling $< ..."
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(CC) $(DEFAULT_FLAGS) -c $< -o $@ --entry rom_header
 
 $(OUT)/boot/sega.s: $(SRC_LIB)/boot/sega.s
-	$(ECHO) $@
-	$(MKDIR) -p $(dir $@)
-	$(CP) $< $@
+	$(Q)$(ECHO) "+++ Creating $@ ..."
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(CP) $< $@
 
 $(SRC)/boot/rom_head.c: $(SRC_LIB)/boot/rom_head.c
-	$(MKDIR) -p $(dir $@)
-	$(CP) $< $@
+	$(Q)$(ECHO) "+++ Creating $@ ..."
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(CP) $< $@
 
 $(OUT)/%.lst: %.c
-	$(MKDIR) -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(Q)$(ECHO) "+++ Creating $@ ..."
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
 $(OUT)/%.o: %.c
-	$(MKDIR) -p $(dir $@)
-	$(CC) $(CFLAGS) -MMD -c $< -o $@
+	$(Q)$(ECHO) "+++ Compiling $< ..."
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(CC) $(CFLAGS) -MMD -c $< -o $@
 
 $(OUT)/%.o: %.s
-	$(MKDIR) -p $(dir $@)
-	$(CC) -x assembler-with-cpp -Wa,--register-prefix-optional,--bitwise-or $(AFLAGS) -MMD -c $< -o $@
+	$(Q)$(ECHO) "+++ Compiling $< ..."
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(CC) -x assembler-with-cpp -Wa,--register-prefix-optional,--bitwise-or $(AFLAGS) -MMD -c $< -o $@
 
 $(OUT)/%.o: %.rs $(CC)
-	$(MKDIR) -p $(dir $@)
-	$(CC) -x assembler-with-cpp -Wa,--register-prefix-optional,--bitwise-or $(AFLAGS) -c $*.rs -o $@
-	$(CP) $*.d $(OUT)/$*.d
-	$(RM) $*.d
+	$(Q)$(ECHO) "+++ Compiling $< ..."
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(CC) -x assembler-with-cpp -Wa,--register-prefix-optional,--bitwise-or $(AFLAGS) -c $*.rs -o $@
+	$(Q)$(CP) $*.d $(OUT)/$*.d
+	$(Q)$(RM) $*.d
 
-%.rs: %.res $(RESCOMP_EXE)
-	$(RESCOMP) $*.res $*.rs -dep $(OUT)/$*.o
+%.rs: %.res $(RESCOMP_JAR)
+	$(Q)$(ECHO) "+++ Building Game resources ..."
+	$(Q)$(RESCOMP) $*.res $*.rs -dep $(OUT)/$*.o $(call QUIET, >> build.log 2>&1)
 
 %.s: %.asm
-	$(MACCER) -o $@ $<
+	$(Q)$(ECHO) "+++ Compiling $< ..."
+	$(Q)$(MACCER) -o $@ $<
 
 %.o80: %.s80
-	$(ASMZ80) $(FLAGSZ80) $< $@ out.lst
+	$(Q)$(ECHO) "+++ Compiling $< ..."
+	$(Q)$(ASMZ80) $(FLAGSZ80) $< $@ out.lst
 
 %.s: %.o80
-	$(BINTOS) $<
+	$(Q)$(ECHO) "+++ Compiling $< ..."
+	$(Q)$(BINTOS) $<
+define MAIN_C_CONTENT
+#include "genesis.h"
+
+int main(bool hardReset){
+    VDP_drawText("Hello SGDK!", 12, 12);
+    while(TRUE) { SYS_doVBlankProcess(); }
+    return 0;
+}
+endef
+
+$(SRC)/main.c: export MAIN_C_CONTENT:=$(MAIN_C_CONTENT)
+$(SRC)/main.c:
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(ECHO) "$${MAIN_C_CONTENT}" > $@
 
 $(LIB)/libmd.a:
-	make -C $(GDK) -f $(GDK)/make/makelib.mk $@
+	$(Q)$(MAKE) -C $(GDK) -f $(GDK)/make/library.mk $@
+
 $(LIB)/libmd_debug.a:
-	make -C $(GDK) -f $(GDK)/make/makelib.mk $@
+	$(Q)$(MAKE) -C $(GDK) -f $(GDK)/make/library.mk $@
 
 include $(GDK)/make/tools.mk
+

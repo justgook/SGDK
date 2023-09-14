@@ -1,8 +1,8 @@
 .DEFAULT_GOAL := release
+
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 GDK := $(abspath $(ROOT_DIR)/..)
 include $(GDK)/make/common.mk
-
 
 SRC_LIB_C := $(wildcard $(SRC_LIB)/*.c)
 SRC_LIB_C += $(wildcard $(SRC_LIB)/ext/*.c)
@@ -33,9 +33,6 @@ FLAGSZ80_LIB := -i$(SRC_LIB) -i$(INCLUDE_LIB)
 
 release: $(LIB)/libmd.a
 
-debug: FLAGS_LIB= $(DEFAULT_FLAGS_LIB) -O1 -DDEBUG=1
-debug: CFLAGS_LIB= $(FLAGS_LIB) -ggdb
-debug: AFLAGS_LIB= $(FLAGS_LIB)
 debug: $(LIB)/libmd_debug.a
 
 asm: FLAGS_LIB= $(DEFAULT_FLAGS_LIB) -O3 -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer -S
@@ -51,27 +48,32 @@ Debug: debug
 Release: release
 Asm: asm
 
-.PHONY: clean
+.PHONY: clean cleanobj cleandep cleanlst cleandebug cleanrelease
 
 cleanlst:
-	$(RM) -f $(LST_LIB)
+	$(Q)$(ECHO) "+++ Remove lists..."
+	$(Q)$(RM) -f $(LST_LIB)
 
 cleandep:
-	$(RM) -f $(DEP_LIB)
+	$(Q)$(ECHO) "+++ Remove dep..."
+	$(Q)$(RM) -f $(DEP_LIB)
 
 cleanobj:
-	$(RM) -f $(OBJ_LIB)
+	$(Q)$(ECHO) "+++ Remove obj..."
+	$(Q)$(RM) -f $(OBJ_LIB)
 
 cleanrelease: cleanobj cleandep cleanlst
-	$(RM) -f $(LIB)/libmd.a out.lst
+	$(Q)$(ECHO) "+++ Remove release..."
+	$(Q)$(RM) -f $(LIB)/libmd.a out.lst
 
 cleandebug: cleanobj cleandep cleanlst
-	$(RM) -f $(LIB)/libmd_debug.a out.lst
+	$(Q)$(ECHO) "+++ Remove debug..."
+	$(Q)$(RM) -f $(LIB)/libmd_debug.a out.lst
 
 cleanasm: cleanlst
 
-clean: cleanobj cleandep cleanlst
-	$(RM) -f $(LIB)/libmd.a $(LIB)/libmd_debug.a out.lst
+clean: cleanobj cleandep cleanlst cleandebug cleanrelease
+	$(Q)$(ECHO) "+++ Cleaning done"
 
 cleanall: clean
 cleanAll: clean
@@ -91,31 +93,36 @@ $(LIB)/libmd_debug.a: CFLAGS_LIB= $(FLAGS_LIB) -ggdb
 $(LIB)/libmd_debug.a: AFLAGS_LIB= $(FLAGS_LIB)
 
 $(LIB)/%.a: %.cmd $(AR)
-	$(MKDIR) -p $(dir $@)
-	$(AR) rs $@ $(LTO_PLUGIN) @$<
+	$(Q)$(ECHO) "+++ Buildindi SGDK $@"
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(AR) rs $@ $(LTO_PLUGIN) @$< $(call QUIET, >> build.log 2>&1)
 
 %.cmd : $(OBJ_LIB)
-	$(ECHO) "$(OBJ_LIB)" > $@
+	$(Q)$(ECHO) "$(OBJ_LIB)" > $@
 
 %.lst: %.c $(CC)
-	$(CC) $(CFLAGS_LIB) -c $< -o $@
+	$(Q)$(CC) $(CFLAGS_LIB) -c $< -o $@
 
 %.o: %.c $(CC)
-	$(CC) $(CFLAGS_LIB) -MMD -c $< -o $@
+	$(Q)$(CC) $(CFLAGS_LIB) -MMD -c $< -o $@
 
 %.o: %.s $(CC)
-	$(CC) -x assembler-with-cpp -Wa,--register-prefix-optional,--bitwise-or -MMD $(AFLAGS_LIB) -c $< -o $@
+	$(Q)$(CC) -x assembler-with-cpp -Wa,--register-prefix-optional,--bitwise-or -MMD $(AFLAGS_LIB) -c $< -o $@
 
 %.o: %.rs $(CC)
-	$(CC) -x assembler-with-cpp -Wa,--register-prefix-optional,--bitwise-or $(AFLAGS_LIB) -c $*.rs -o $@
+	$(Q)$(CC) -x assembler-with-cpp -Wa,--register-prefix-optional,--bitwise-or $(AFLAGS_LIB) -c $*.rs -o $@
 
-%.rs: %.res $(RESCOMP_EXE)
-	$(RESCOMP) $*.res $*.rs -dep $*.o
+%.rs: %.res $(RESCOMP_JAR)
+	$(Q)$(ECHO) "+++ Building SGDK resources ..."
+	$(Q)$(RESCOMP) $*.res $*.rs -dep $*.o $(call QUIET, >> build.log 2>&1)
 
 %.o80: %.s80 $(ASMZ80)
-	$(ASMZ80) $(FLAGSZ80_LIB) $< $@ out.lst
+	$(Q)$(ECHO) "+++ Compiling SGDK $< ..."
+	$(Q)$(ASMZ80) $(FLAGSZ80_LIB) $< $@ out.lst $(call QUIET, >> build.log 2>&1)
 
 %.s: %.o80 $(BINTOS)
-	$(BINTOS) $<
+	$(Q)$(ECHO) "+++ Compiling SGDK $< ..."
+	$(Q)$(BINTOS) $< $(call QUIET, >> build.log 2>&1)
 
 include $(GDK)/make/tools.mk
+

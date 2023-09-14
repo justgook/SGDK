@@ -59,7 +59,8 @@ Thumbs.db
 
 #build target folders
 /lib/
-/bin-unix/
+/bin-linux/
+/bin-apple/
 #Preserv Windows binaries until they will be rebuild during initial state (same as on Unix system)
 !/bin/*.exe
 !/bin/*.dll
